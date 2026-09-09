@@ -53,10 +53,14 @@ class FMSource(_Model):
     gives metal and glass; integer ratios give musical tones."""
 
     type: Literal["fm"] = "fm"
-    carrier_ratio: float = Field(1.0, gt=0, description="Carrier frequency as a multiple of the pitch.")
+    carrier_ratio: float = Field(
+        1.0, gt=0, description="Carrier frequency as a multiple of the pitch. 2 sounds an octave up, 0.5 an octave down."
+    )
     mod_ratio: float = Field(2.0, gt=0, description="Modulator frequency as a multiple of the pitch.")
     index: float = Field(2.0, ge=0, le=20, description="Modulation index at note start. Higher is brighter.")
-    index_end: float = Field(0.0, ge=0, le=20, description="Modulation index at note end.")
+    index_end: float = Field(
+        0.0, ge=0, le=20, description="Modulation index at note end. 0 leaves a pure sine tail; 1 to 2 keeps a metallic ring."
+    )
     index_curve: Literal["linear", "exp"] = "exp"
 
 
@@ -103,7 +107,7 @@ class Pitch(_Model):
     """Pitch trajectory for osc and fm sources. Noise sources ignore it entirely (bit noise
     has its own bit_rate_hz), so omit pitch on noise layers. Slides run over slide_ms then hold
     end_hz; slide_ms null means the layer's full envelope length; slide_ms longer than the layer
-    is clipped, the layer is never extended. Vibrato and
+    is clipped, the layer is never extended. With curve step only step_at_ms matters. Vibrato and
     arpeggio multiply on top of the slide. arpeggio_semitones loops through the list for the
     whole layer, one entry per 1/arpeggio_hz seconds, starting at the first entry."""
 
@@ -269,9 +273,11 @@ class Layer(_Model):
 
 class Master(_Model):
     """After the layers are summed: master fx (in order) -> DC removal -> gain to target_lufs ->
-    true-peak limiter at true_peak_dbtp. Loudness is measured over at least 400 ms, so sounds
-    shorter than that read quieter than they are and the peak ceiling usually stops them below
-    target; the render result reports target_miss_db and a warning when that happens. Fix it with
+    true-peak limiter at true_peak_dbtp (the limiter runs even when target_lufs is null).
+    Loudness is measured over at least 400 ms, so sounds shorter than that read quieter than
+    they are and the peak ceiling usually stops them below target; long sounds with high crest
+    factor (punch, distortion, a loud transient over a quiet body) miss for the same reason. The
+    limiter contributes at most 3 dB; the render result reports target_miss_db and a warning. Fix it with
     a compressor, less punch, or a longer sound, not a higher target. For deliberately quiet
     sounds set target_lufs to null and use layer gain_db."""
 
@@ -299,7 +305,9 @@ class Variation(_Model):
     timing_ms: float = Field(
         0.0, ge=0, le=500, description="Random extra delay of 0 to timing_ms on every layer except the first, which stays put."
     )
-    gain_db: float = Field(1.0, ge=0, le=12)
+    gain_db: float = Field(
+        1.0, ge=0, le=12, description="Per-layer level jitter. Applied before normalization, so it changes balance between layers, not overall loudness."
+    )
 
 
 class SoundSpec(_Model):
@@ -317,3 +325,41 @@ class SoundSpec(_Model):
 
 def spec_json_schema() -> dict:
     return SoundSpec.model_json_schema()
+
+
+def compact_schema() -> str:
+    """A short, readable field list for agents. The full JSON schema is at sfx://schema."""
+    lines: list[str] = []
+
+    def walk(model, prefix: str) -> None:
+        doc = " ".join((model.__doc__ or "").split())
+        lines.append(f"\n{prefix or model.__name__}: {doc}" if doc else f"\n{prefix or model.__name__}")
+        for name, f in model.model_fields.items():
+            ann = f.annotation
+            bounds = []
+            for m in f.metadata:
+                for k in ("ge", "le", "gt", "lt", "min_length"):
+                    v = getattr(m, k, None)
+                    if v is not None:
+                        bounds.append(f"{k}={v}")
+            default = f.default if f.default is not None and not callable(f.default) else None
+            typ = str(ann).replace("typing.", "").replace("sfx.spec.models.", "")
+            typ = typ.replace("Annotated[Union[", "one of [").replace("], FieldInfo", "")
+            typ = typ[:60]
+            desc = f" - {f.description}" if f.description else ""
+            dflt = f" (default {json.dumps(default)})" if default is not None and not isinstance(default, BaseModel) else ""
+            b = f" [{', '.join(bounds)}]" if bounds else ""
+            lines.append(f"  {prefix + '.' if prefix else ''}{name}: {typ}{b}{dflt}{desc}")
+
+    walk(SoundSpec, "")
+    walk(Layer, "layers[]")
+    for src in (OscSource, NoiseSource, FMSource, SfxrSource):
+        walk(src, f"source(type={src.model_fields['type'].default})")
+    walk(Pitch, "pitch")
+    walk(Amp, "amp")
+    walk(Filter, "filter")
+    for fx in (Bitcrush, Distortion, Clip, Compressor, Delay, Reverb, Chorus, Gain, PitchShift):
+        walk(fx, f"fx[](type={fx.model_fields['type'].default})")
+    walk(Master, "master")
+    walk(Variation, "variation")
+    return "\n".join(lines).strip()

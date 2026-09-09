@@ -20,17 +20,19 @@ dependencies = [
 
 [project.optional-dependencies]
 fx = ["pedalboard>=0.9"]
-dev = ["pytest>=8"]
+rest = ["fastapi>=0.110", "uvicorn>=0.29"]
+dev = ["pytest>=8", "httpx>=0.27", "fastapi>=0.110", "uvicorn>=0.29"]
 
 [project.scripts]
 sfx = "sfx.server.cli:main"
 sfx-mcp = "sfx.server.mcp_server:main"
+sfx-http = "sfx.server.rest:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-sfx = ["presets/*.json", "cookbook.md"]
+sfx = ["presets/*.json", "cookbook.md", "preview.html"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

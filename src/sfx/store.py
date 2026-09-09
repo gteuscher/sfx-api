@@ -157,6 +157,34 @@ def load_spec(path_or_id: str, out_dir: Path | None = None) -> SoundSpec:
     return SoundSpec.model_validate(json.loads(sidecar.read_text(encoding="utf-8")))
 
 
+def list_renders(out_dir: Path | None = None, limit: int = 100) -> list[dict]:
+    """Renders in out_dir with a spec sidecar, newest first, with features and warnings."""
+    out_dir = Path(out_dir) if out_dir else default_out_dir()
+    if not out_dir.exists():
+        return []
+    wavs = sorted(out_dir.glob("*.wav"), key=lambda q: q.stat().st_mtime, reverse=True)
+    items = []
+    for wav in wavs[:limit]:
+        sidecar = wav.with_suffix(".json")
+        if not sidecar.exists():
+            continue
+        try:
+            spec = json.loads(sidecar.read_text(encoding="utf-8"))
+            x, sr = read_wav(wav)
+            feats = analyze(x, sr)
+        except Exception:
+            continue
+        warnings = []
+        target = (spec.get("master") or {}).get("target_lufs", -18.0)
+        if target is not None and feats.get("lufs") is not None and feats["lufs"] - target < -1.5:
+            warnings.append(f"{abs(round(feats['lufs'] - target, 1))} dB below target_lufs (peak ceiling)")
+        items.append({
+            "id": wav.stem, "path": str(wav), "name": spec.get("name"), "modified": wav.stat().st_mtime,
+            "spec": spec, "features": feats, "warnings": warnings,
+        })
+    return items
+
+
 def analyze_file(path_or_id: str, out_dir: Path | None = None) -> dict:
     wav = resolve_path(path_or_id, out_dir)
     x, sr = read_wav(wav)

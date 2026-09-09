@@ -8,7 +8,9 @@ Keep sounds short: most game one-shots are 80 to 600 ms. With the default exp cu
 ## Workflow
 
 1. Pick a category below. Start from its preset with `sfx_render_preset` (preset names are
-   listed with each recipe) or write a spec from the recipe.
+   listed with each recipe; `sfx_docs` with section `presets` returns their full specs) or write
+   a spec from the recipe. Renders go to the folder shown in the result path; the server's
+   SFX_OUT_DIR setting decides it.
 2. Render with `sfx_render`, then `sfx_play` so the user hears it. Read `features` and
    `warnings` in the result (definitions at the end of this document).
 3. Translate feedback into parameter moves using the vocabulary table, then `sfx_tweak` by id.
@@ -36,7 +38,7 @@ put them on master and set `tail_ms` for tails.
 | bigger, heavier | add a sub layer (sine 40 to 90 Hz, punch 0.5), raise `distortion`, lower pitch overall |
 | smaller, cuter | raise pitch by an octave, shorten everything, use square duty 0.25, add a rising pitch |
 | more movement, more alive | `vibrato_cents` 20 to 80, `arpeggio_semitones`, `chorus`, `end_hz` slides |
-| flutter, trill, wobble | `vibrato_cents` 50 to 100 at `vibrato_hz` 15 to 30 for a smooth flutter; `retrigger_hz` 15 to 25 for a choppy one; both together read as buzz |
+| flutter, trill, wobble | `vibrato_cents` 50 to 100 at `vibrato_hz` 6 to 10 for a wobble, 15 to 30 for a flutter; `retrigger_hz` 15 to 25 for a choppy one; both together read as buzz |
 | lower / higher | scale `start_hz` and `end_hz` together by 2^(semitones/12) |
 | louder / quieter (long sounds) | change `master.target_lufs` (-14 loud, -18 normal, -22 background) |
 | quieter (short or UI sounds) | set `master.target_lufs` to null and use layer `gain_db` (-12 to -24), or lower `true_peak_dbtp` to -6 or -12 |
@@ -52,30 +54,36 @@ to `end_cutoff_hz` 1000, `q` 1 to 2) makes it feel like it moves away. `bitcrush
 retro. Chunkier: add `distortion` 8 to 12 dB and `punch` 0.4. Thinner: square with `duty` 0.15.
 
 **Jump.** Preset `jump`. Square, pitch rising: 300 to 700 Hz over 120 to 200 ms, exp. Short
-hold, decay 150 ms. Bigger jump: wider range, longer slide. Double jump: second layer with
+hold, decay 150 ms. Bigger jump: wider range, longer slide. Bouncier: faster slide (80 ms) with
+a wider interval, `punch` 0.3, and `duty` 0.3. Double jump: second layer with
 `start_ms` 60 to 80, a fifth higher (multiply both Hz by 1.5); for a flutter on the second hop
 add `vibrato_cents` 70 at `vibrato_hz` 20, not retrigger.
 
 **Coin, pickup, collect.** Preset `coin`. Square, two notes with `curve` step: B5 988 Hz to E6
-1319 Hz at `step_at_ms` 70 to 90, `hold_ms` 70 so the second note is still loud, decay 250 ms.
-Bright add: a sine layer at 2637 Hz (octave of the second note), gain -14, `start_ms` 80.
-Rarer pickup: FM bell layer with `arpeggio_semitones` [0, 4, 7, 12] at 20 Hz and a longer decay.
+1319 Hz at `step_at_ms` 80, `hold_ms` 80 (hold must be at least step_at_ms or the second note
+lands in the decay), decay 250 ms. Bright add: a sine layer at 2637 Hz (octave of the second
+note), gain -14, `start_ms` 80. Rarer pickup: keep the square, add an FM bell layer (pitch 1319
+Hz, `mod_ratio` 2.76, `index` 4 to 0.5, decay 500 ms, gain -6) with `arpeggio_semitones`
+[0, 4, 7, 12] at `arpeggio_hz` 20.
 
 **Hit, punch, impact.** Preset `hit`. Two layers. Transient: white noise, attack 0, decay 50 to
 90 ms, lowpass sweeping from 5000 to 500. Body: sine 150 to 200 Hz falling to 50 to 60 Hz over
 100 ms, punch 0.5 to 0.7, distortion 8 to 12 dB. Master compressor threshold -12, ratio 4.
-Metallic: FM body with `mod_ratio` 3.7 or 5.3 and `index` 8 to 14 with decay 400 to 700 ms for
-ring; above index 15 it turns to noise. Wooden: bandpass 400 to 900 Hz on the noise. Flesh, wet,
-gore: pink noise with bandpass sweeping 1400 down to 300 Hz, `q` 2, attack 8 ms, decay 90 ms,
-plus a brown noise slap lowpassed at 600 Hz; keep the sine body, drop the distortion to 6 dB.
+Metallic: FM body with `mod_ratio` 3.7 or 5.3, `index` 8 to 14 decaying to `index_end` 1 to
+2 (0 leaves a plain sine tail), decay 400 to 700 ms for ring; above index 15 it turns to noise.
+Wooden: bandpass 400 to 900 Hz on the noise. Flesh, wet, gore: pink noise with bandpass sweeping
+1400 down to 300 Hz, `q` 2, `gain_db` +6 to make up for the narrow band, attack 8 ms, decay 90
+ms, plus a brown noise slap lowpassed at 600 Hz; keep the sine body, drop the distortion to 6 dB.
 
 **Explosion.** Preset `explosion`. Three layers. Sub: sine 90 down to 30 Hz, decay 600 ms, punch
 0.5. Blast: brown noise, decay 800 to 1200 ms with `curve` linear, lowpass sweeping 3500 down to
 150, distortion 12 to 16 dB. Crackle: bit noise with `bit_rate_hz` 6000 sweeping to 500,
-highpass 800, gain -10. Master reverb room 0.5 wet 0.2 with `tail_ms` 400. Target -14 LUFS.
-Debris: one or two extra short layers starting 150 to 400 ms in, white noise bandpass 1500 to
-3000 Hz, decay 40 ms, `retrigger_hz` 8 to 12 so they read as separate pebbles, gain -8.
-Small grenade: halve every decay and drop the sub to 60 Hz.
+highpass 800, gain -10. Master: compressor (threshold -14, ratio 4, attack 5, release 120) then
+reverb room 0.5 wet 0.2, `tail_ms` 400. Target -14 LUFS; without the compressor the punch and
+distortion leave it 4 to 6 dB short. Debris: a white-noise layer bandpassed 1500 to 3000 Hz
+starting 150 to 400 ms in, `decay_ms` 300 with `retrigger_hz` 8 to 12 (the layer must outlast
+the retrigger period, 80 to 125 ms, or nothing repeats), gain -8. Small grenade: halve every
+decay and drop the sub to 60 Hz.
 
 **UI click, tick, confirm.** Preset `ui_click`. FM: `mod_ratio` 3 to 5, `index` 3 decaying to
 0, pitch 1200 to 2400 Hz, attack 0.5 ms, decay 30 to 60 ms. Highpass 400 Hz. Confirm: two
@@ -102,29 +110,38 @@ gives a fast run, at 20 Hz or more it reads as a chord-like buzz.
 with `bit_rate_hz` sweeping 9000 down to 600.
 
 **Magic, sparkle, spell.** Preset `magic_sparkle`. FM bells (`mod_ratio` 1.41 or 2.76 for
-inharmonic shimmer, `index` 4 to 0.5) with `arpeggio_semitones` [0, 7, 12, 19, 24] at 20 to 30
-Hz, chorus, and a triangle shimmer layer with vibrato. Master reverb room 0.6, wet 0.3,
+inharmonic shimmer, `index` 4 to 0.5, base pitch 800 to 1500 Hz; higher gets glassy fast with a
+two-octave arpeggio) with `arpeggio_semitones` [0, 7, 12, 19, 24] at 20 to 30 Hz, chorus, and a
+triangle shimmer layer with vibrato. Arpeggio speed: 8 to 12 Hz reads as a run of notes, 20 to 30
+Hz as shimmer on a long high bell, and 20 Hz or more on a low, short square reads as buzz. Master reverb room 0.6, wet 0.3,
 `tail_ms` 500. Ice or crystal: `mod_ratio` 2.76, highpass 1500 on the bells, a white-noise frost
 layer bandpassed at 6000 with `q` 3 at -20 dB (keep it quiet, white noise dominates the centroid
 fast). Dark magic: lower everything two octaves, saw instead of FM, lowpass 1500, brown noise bed.
 
 **Footstep.** Noise burst: white or pink, attack 0, decay 40 to 80 ms, bandpass 200 to 900 Hz
-(`q` 1 to 2) tuned per surface: stone 700, wood 400, grass 250 with pink noise, metal FM with
-`mod_ratio` 5. Add a quiet sine thud at 90 Hz, decay 40 ms. Always render 4 to 8 variations with
-`filter_cents` 200 and `gain_db` 2 (noise ignores `pitch_cents`).
+(`q` 1 to 2, `gain_db` +6) tuned per surface: stone 700 with decay 50, wood 400 with decay 70,
+grass 250 with pink noise and decay 80, metal FM with `mod_ratio` 5. Add a sine thud at 90 Hz,
+decay 40 ms, gain -6; the thud is why `band_db.low` sits near `mid`. Set `variation` to
+`{"pitch_cents": 0, "filter_cents": 200, "gain_db": 2}` (noise ignores pitch_cents, and the thud
+should not wander), then `sfx_variations` with `sound_id` and `count` 6; siblings are named
+`<id>-v1` to `<id>-v6` and the parent stays tweakable.
 
 **Whoosh, swipe.** Pink noise, attack 40 to 80 ms, decay 120 to 200 ms, bandpass sweeping
 `cutoff_hz` 400 up to 3000 (or down for a swing back), `q` 1.5 to 3, `gain_db` +6 to make up for
-the narrow band. Avoid adding a white-noise edge layer above -20 dB; it takes over.
+the narrow band. Back and forth: two such layers, the second starting where the first peaks
+(around its attack time plus 40 ms) with the sweep reversed. Avoid adding a white-noise edge layer above -20 dB; it takes over.
 
 **Alarm, siren, beep pattern.** Siren: square with `vibrato_cents` 700 at 2 to 6 Hz, sustain 1.0
 for 500 to 1500 ms. Beep pattern: one square layer per beep (880 Hz, hold 100 to 130 ms, decay
-20 ms) with `start_ms` spaced by the gap; a double beep is two layers at 0 and 170 ms. A
+20 ms) with `start_ms` spaced by the gap. Render one cycle and let the engine repeat it: a
+low-health cycle is two beeps at 0 and 170 ms in a 300 ms file, repeated every 1 to 2 s in game. A
 lowpass at 6000 softens the edges.
 
 **Creak, scrape, friction (doors, chests, hinges).** Stick-slip approximation: saw at 160 to 260
 Hz with `vibrato_cents` 90 at `vibrato_hz` 7, `retrigger_hz` 18 to 25 for grain, resonant
-bandpass `q` 4 sweeping 650 up to 1100 Hz, 500 to 900 ms with `curve` linear. Add a brown noise
+bandpass `q` 4 sweeping 650 up to 1100 Hz (rising for opening, falling for closing), 500 to 900
+ms with `curve` linear. Wooden: keep the brown body and lowpass the saw at 1500. Metal: replace
+the saw with FM `mod_ratio` 3.7, `index` 6, and highpass 400. Add a brown noise
 body lowpassed at 500 Hz at -6 dB and a small room reverb. The schema cannot jitter retrigger
 timing, so it stays somewhat mechanical; layering two of these at slightly different
 `retrigger_hz` (19 and 23) breaks the regularity.
@@ -164,18 +181,21 @@ square, base 0.35, freq_ramp 0.25, sustain 0.15.
 
 `features` in every render result:
 
-- `duration_ms` is the file length; `active_ms` is onset to the last sample above -40 dB, the
-  audible length. `tail_silence_ms` is what is left after that.
+- All thresholds are relative to the sound's own peak. `duration_ms` is the file length;
+  `onset_ms` is the first sample above -40 dB; `active_ms` is onset to the last sample above
+  -40 dB, the audible length. `tail_silence_ms` is what is left after that.
 - `attack_ms` is onset to the first envelope maximum that reaches half the peak. For a
   two-note sound it describes the first note, not the loudest.
 - `decay_ms` runs from that first maximum until the envelope stays below -40 dB for 20 ms. For
   retriggered or sustained sounds it runs to the end of activity, so read `active_ms` instead.
 - `pitch_hz_start` and `pitch_hz_end` are autocorrelation estimates over the first and last 40
-  ms of activity; use them to confirm slides. They are null for noise-dominated sounds, can fold
-  an octave down, and are skewed by reverb tails and overlapping notes; trust the spec over the
-  estimate when they disagree by exactly an octave.
+  ms of activity; use them to confirm slides. They follow whichever layer is loudest in that
+  window, are null for noise-dominated sounds (a bandpassed noise tail can still fool them),
+  can fold one or two octaves down on arpeggiated or layered sounds, and are skewed by reverb
+  tails; trust the spec over the estimate when they disagree by an octave.
 - `onsets_ms` lists where the envelope rises past 30 percent of peak after a dip below 10
-  percent. A two-note confirm shows two entries; a 14 Hz stutter shows one every 71 ms.
+  percent. A two-note confirm shows two entries; a 14 Hz stutter shows one every 71 ms. Heavily
+  distorted or compressed noise can add a few spurious entries; they do not mean pumping.
 - `spectral_centroid_hz` is magnitude weighted; any white noise layer drags it up fast.
   `band_db` (energy share below 250 Hz, 250 to 2000, above 2000, in dB relative to total) is the
   better balance check: a meaty hit has `low` near 0 and `high` below -15.

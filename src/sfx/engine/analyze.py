@@ -1,6 +1,7 @@
 """Descriptors so an agent can reason about what it rendered.
 
 Definitions (all times in ms, levels in dB):
+All thresholds are relative to the sound's own peak, not absolute dBFS.
 - onset_ms: first sample louder than -40 dB below the peak.
 - attack_ms: onset to the first envelope maximum that reaches at least half the peak.
 - decay_ms: from that first maximum until the envelope drops below -40 dB of peak and stays
@@ -9,8 +10,9 @@ Definitions (all times in ms, levels in dB):
 - tail_silence_ms: silence after the last active sample.
 - pitch_hz_start / pitch_hz_end: autocorrelation pitch of the first and last 40 ms of activity.
   None when there is no clear periodicity (noise-dominated).
-- onsets_ms: times where the envelope rises above 30 percent of peak after dipping below 10
-  percent, up to 16 entries. Verifies multi-note and stuttered sounds.
+- onsets_ms: times where the 5 ms envelope rises above 30 percent of peak after dipping below
+  10 percent, up to 16 entries. Verifies multi-note and stuttered sounds; distorted noise can
+  still produce a few extra entries.
 - spectral_centroid_hz: magnitude-weighted mean frequency. White noise pulls this high.
 - band_db: energy share of low (<250 Hz), mid (250-2000), high (>2000) in dB relative to total.
 """
@@ -49,7 +51,7 @@ def _pitch(seg: np.ndarray, sr: int) -> float | None:
     if i >= hi:
         return None
     lag = i + int(np.argmax(ac[i:hi]))
-    if ac[lag] < 0.35:
+    if ac[lag] < 0.5:
         return None
     return float(sr / lag)
 
@@ -90,8 +92,9 @@ def analyze(x: np.ndarray, sr: int) -> dict:
         if len(idx):
             decay_end = first_peak + int(idx[0])
 
-    # onsets: rises above 30% after a dip below 10%, on the 2 ms decimated envelope
-    dec_all = env[::step]
+    # onsets: rises above 30% after a dip below 10%, on a 5 ms smoothed, 2 ms decimated envelope
+    k5 = max(int(sr / 200), 1)
+    dec_all = np.convolve(env, np.ones(k5) / k5, mode="same")[::step]
     onsets: list[float] = []
     armed = True
     for i, v in enumerate(dec_all):

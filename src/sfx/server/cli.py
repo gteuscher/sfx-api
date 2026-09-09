@@ -56,6 +56,9 @@ def main(argv: list[str] | None = None) -> int:
     d.add_argument("--play", action="store_true")
 
     sub.add_parser("serve", help="run the MCP server over stdio")
+    sh = sub.add_parser("serve-http", help="run the REST API, preview page, and MCP over HTTP")
+    sh.add_argument("--host", default="127.0.0.1")
+    sh.add_argument("--port", type=int, default=8765)
 
     a = p.parse_args(argv)
     out_dir = Path(a.out_dir) if getattr(a, "out_dir", None) else None
@@ -106,6 +109,13 @@ def main(argv: list[str] | None = None) -> int:
         from sfx.server.mcp_server import main as serve
 
         serve()
+    elif a.cmd == "serve-http":
+        import uvicorn
+
+        from sfx.server.rest import app
+
+        print(f"preview page at http://{a.host}:{a.port}/  REST docs at /api/docs  MCP at /mcp")
+        uvicorn.run(app, host=a.host, port=a.port, log_level="warning")
     return 0
 
 

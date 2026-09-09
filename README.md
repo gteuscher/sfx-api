@@ -52,11 +52,23 @@ SFX_OUT_DIR = "C:\\path\\to\\game\\Assets\\Audio\\Generated"
 Then in either host: "Read the sfx cookbook, then make me a chunky retro laser with a short
 tail and play it."
 
+## REST API and preview page
+
+```powershell
+.venv\Scripts\sfx serve-http --port 8765
+```
+
+Opens a preview page at http://127.0.0.1:8765/ that lists every render in the output folder
+with play buttons, features, warnings, the spec, a merge-patch box to tweak and re-render, a
+variations button, and A/B comparison. The REST API is documented at `/api/docs`: render a
+spec, render or save presets, tweak by id, variations, analyze, play, and download WAVs. The
+MCP server is also mounted at `/mcp` over Streamable HTTP for hosts that prefer it to stdio.
+
 ## Tools
 
 | Tool | Purpose |
 |---|---|
-| `sfx_docs` | Schema plus cookbook. Agents call this once. |
+| `sfx_docs` | Compact schema, cookbook, and preset names; sections available. Agents call this once. |
 | `sfx_list_presets` | Built-in and saved presets. |
 | `sfx_render` | Render a SoundSpec. Returns path, id, features, normalization info, and warnings. |
 | `sfx_render_preset` | Render a preset with optional overrides. |

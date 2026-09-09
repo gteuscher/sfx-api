@@ -3,21 +3,58 @@
   "layers": [
     {
       "id": "body",
-      "source": {"type": "osc", "wave": "square", "duty": 0.5},
-      "pitch": {"start_hz": 988, "end_hz": 1319, "curve": "step", "step_at_ms": 80},
-      "amp": {"attack_ms": 1, "hold_ms": 70, "decay_ms": 260, "release_ms": 40, "punch": 0.15},
-      "filter": {"type": "lowpass", "cutoff_hz": 6000, "end_cutoff_hz": 2500, "q": 0.7},
-      "fx": [{"type": "bitcrush", "bits": 8}],
+      "source": {
+        "type": "osc",
+        "wave": "square",
+        "duty": 0.5
+      },
+      "pitch": {
+        "start_hz": 988,
+        "end_hz": 1319,
+        "curve": "step",
+        "step_at_ms": 80
+      },
+      "amp": {
+        "attack_ms": 1,
+        "hold_ms": 80,
+        "decay_ms": 260,
+        "release_ms": 40,
+        "punch": 0.15
+      },
+      "filter": {
+        "type": "lowpass",
+        "cutoff_hz": 6000,
+        "end_cutoff_hz": 2500,
+        "q": 0.7
+      },
+      "fx": [
+        {
+          "type": "bitcrush",
+          "bits": 8
+        }
+      ],
       "gain_db": -2
     },
     {
       "id": "shimmer",
-      "source": {"type": "osc", "wave": "sine"},
-      "pitch": {"start_hz": 2637},
-      "amp": {"attack_ms": 1, "decay_ms": 220, "release_ms": 30},
+      "source": {
+        "type": "osc",
+        "wave": "sine"
+      },
+      "pitch": {
+        "start_hz": 2637
+      },
+      "amp": {
+        "attack_ms": 1,
+        "decay_ms": 220,
+        "release_ms": 30
+      },
       "gain_db": -14,
       "start_ms": 80
     }
   ],
-  "master": {"target_lufs": -16, "true_peak_dbtp": -1}
+  "master": {
+    "target_lufs": -16,
+    "true_peak_dbtp": -1
+  }
 }

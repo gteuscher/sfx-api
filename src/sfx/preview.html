@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>sfx-api renders</title>
+<style>
+  :root {
+    --ground: #EDF0F3; --surface: #FFFFFF; --ink: #1B222D; --muted: #5A6675; --line: #CFD6DE;
+    --accent: #B86E12; --accent-soft: #F6E7CF; --wave: #1E7A8A; --wave-soft: #D5EBEF; --code: #F4F6F8;
+    --warn: #8A3B12; --warn-soft: #F8E3D6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --ground: #141920; --surface: #1C232C; --ink: #E4E9EF; --muted: #97A3B2; --line: #313B47;
+      --accent: #E6A03A; --accent-soft: #3A2C13; --wave: #4FB4C5; --wave-soft: #163A41; --code: #10151B;
+      --warn: #F0A57A; --warn-soft: #3A2116; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 15px/1.5 "Segoe UI", system-ui, sans-serif; }
+  header { display: flex; align-items: baseline; gap: 16px; padding: 18px 24px; border-bottom: 1px solid var(--line); background: var(--surface); position: sticky; top: 0; z-index: 2; flex-wrap: wrap; }
+  h1 { font-size: 18px; margin: 0; letter-spacing: -0.01em; }
+  header .sub { color: var(--muted); font-size: 13px; }
+  header .spacer { flex: 1; }
+  button, select, input { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 5px; padding: 5px 10px; cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  button.ab { min-width: 34px; font-family: Consolas, monospace; }
+  button.ab.active { background: var(--wave-soft); border-color: var(--wave); color: var(--wave); font-weight: 600; }
+  main { max-width: 1080px; margin: 0 auto; padding: 20px 24px 60px; display: grid; gap: 14px; }
+  .abbar { display: flex; gap: 10px; align-items: center; padding: 10px 14px; background: var(--wave-soft); border: 1px solid var(--wave); border-radius: 6px; font-size: 14px; }
+  .abbar[hidden] { display: none; }
+  .abbar code { font-family: Consolas, monospace; }
+  .row { display: grid; grid-template-columns: 34px 1fr auto; gap: 14px; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; }
+  .row .play { width: 34px; height: 34px; border-radius: 50%; padding: 0; display: grid; place-items: center; }
+  .row .play svg { width: 14px; height: 14px; fill: currentColor; }
+  .row .play.playing { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .name { font-weight: 600; font-family: Consolas, monospace; font-size: 14px; }
+  .meta { color: var(--muted); font-size: 13px; display: flex; gap: 14px; flex-wrap: wrap; font-variant-numeric: tabular-nums; }
+  .meta b { color: var(--ink); font-weight: 600; }
+  .bands { display: inline-grid; grid-template-columns: repeat(3, 34px); gap: 2px; vertical-align: middle; margin-left: 4px; }
+  .bands span { height: 8px; background: var(--wave); border-radius: 2px; opacity: 0.25; }
+  .warn { margin-top: 6px; font-size: 13px; color: var(--warn); background: var(--warn-soft); border-radius: 4px; padding: 4px 8px; }
+  .actions { display: flex; gap: 6px; align-items: center; }
+  details { margin-top: 8px; }
+  summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+  pre { background: var(--code); border: 1px solid var(--line); border-radius: 5px; padding: 10px; font: 12.5px/1.45 Consolas, monospace; overflow-x: auto; margin: 6px 0 0; }
+  .tweak { display: flex; gap: 6px; margin-top: 8px; }
+  .tweak input { flex: 1; font-family: Consolas, monospace; font-size: 13px; }
+  .empty { color: var(--muted); text-align: center; padding: 40px; }
+  .err { color: var(--warn); font-size: 13px; margin-top: 6px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>sfx-api renders</h1>
+  <span class="sub" id="outdir"></span>
+  <span class="spacer"></span>
+  <select id="preset" aria-label="Preset"></select>
+  <button id="renderPreset" class="primary">Render preset</button>
+  <button id="refresh">Refresh</button>
+</header>
+<main>
+  <div class="abbar" id="abbar" hidden>
+    A/B: <code id="abA">pick A</code> vs <code id="abB">pick B</code>
+    <button id="playA">Play A</button><button id="playB">Play B</button><button id="playAB">A then B</button>
+    <span class="spacer"></span><button id="clearAB">Clear</button>
+  </div>
+  <div id="list"></div>
+</main>
+<script>
+const $ = (s, r = document) => r.querySelector(s);
+const state = { renders: [], a: null, b: null, current: null, audio: new Audio() };
+const fmt = (v, d = 0) => v == null ? "–" : Number(v).toFixed(d);
+
+async function api(path, opts) {
+  const r = await fetch(path, Object.assign({ headers: { "content-type": "application/json" } }, opts));
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || r.statusText);
+  return j;
+}
+
+async function load() {
+  const h = await api("/api/health");
+  $("#outdir").textContent = h.out_dir;
+  const [renders, presets] = await Promise.all([api("/api/renders"), api("/api/presets")]);
+  state.renders = renders.renders;
+  const sel = $("#preset");
+  if (!sel.options.length) for (const name of Object.keys(presets)) sel.add(new Option(name, name));
+  draw();
+}
+
+function bandBar(b) {
+  if (!b) return "";
+  const op = v => Math.max(0.15, Math.min(1, 1 + (v ?? -30) / 30));
+  return `<span class="bands" title="low / mid / high energy"><span style="opacity:${op(b.low)}"></span><span style="opacity:${op(b.mid)}"></span><span style="opacity:${op(b.high)}"></span></span>`;
+}
+
+function draw() {
+  const list = $("#list");
+  if (!state.renders.length) { list.innerHTML = `<div class="empty">No renders yet. Render a preset above, or ask your agent for a sound.</div>`; return; }
+  list.innerHTML = state.renders.map(r => {
+    const f = r.features || {};
+    const abA = state.a === r.id ? " active" : "", abB = state.b === r.id ? " active" : "";
+    return `<div class="row" data-id="${r.id}">
+      <button class="play" data-play="${r.id}" aria-label="Play ${r.id}"><svg viewBox="0 0 16 16"><path d="M3 2l11 6-11 6z"/></svg></button>
+      <div>
+        <div class="name">${r.id}</div>
+        <div class="meta">
+          <span><b>${fmt(f.active_ms)}</b> ms audible of ${fmt(f.duration_ms)}</span>
+          <span>attack <b>${fmt(f.attack_ms)}</b></span>
+          <span>decay <b>${fmt(f.decay_ms)}</b></span>
+          <span>${fmt(f.lufs, 1)} LUFS</span>
+          <span>peak ${fmt(f.peak_dbfs, 1)} dB</span>
+          <span>pitch ${fmt(f.pitch_hz_start)} → ${fmt(f.pitch_hz_end)} Hz</span>
+          <span>centroid ${fmt(f.spectral_centroid_hz)} Hz ${bandBar(f.band_db)}</span>
+        </div>
+        ${(r.warnings || []).map(w => `<div class="warn">${w}</div>`).join("")}
+        <details><summary>spec</summary><pre>${JSON.stringify(r.spec, null, 2)}</pre>
+          <div class="tweak"><input placeholder='merge patch, e.g. {"master":{"target_lufs":-14}}' data-patch="${r.id}"><button data-tweak="${r.id}">Tweak and re-render</button><button data-vars="${r.id}">4 variations</button></div>
+          <div class="err" data-err="${r.id}"></div>
+        </details>
+      </div>
+      <div class="actions">
+        <button class="ab${abA}" data-a="${r.id}">A</button>
+        <button class="ab${abB}" data-b="${r.id}">B</button>
+        <a href="/api/renders/${r.id}.wav" download="${r.id}.wav"><button>WAV</button></a>
+      </div>
+    </div>`;
+  }).join("");
+  $("#abbar").hidden = !(state.a || state.b);
+  $("#abA").textContent = state.a || "pick A";
+  $("#abB").textContent = state.b || "pick B";
+}
+
+function play(id) {
+  return new Promise(res => {
+    const a = state.audio;
+    a.pause();
+    document.querySelectorAll(".play.playing").forEach(b => b.classList.remove("playing"));
+    a.src = `/api/renders/${id}.wav`;
+    const btn = document.querySelector(`[data-play="${id}"]`);
+    if (btn) btn.classList.add("playing");
+    a.onended = () => { if (btn) btn.classList.remove("playing"); res(); };
+    a.play().catch(res);
+  });
+}
+
+document.addEventListener("click", async e => {
+  const t = e.target.closest("button");
+  if (!t) return;
+  const d = t.dataset;
+  try {
+    if (d.play) play(d.play);
+    else if (d.a) { state.a = state.a === d.a ? null : d.a; draw(); }
+    else if (d.b) { state.b = state.b === d.b ? null : d.b; draw(); }
+    else if (t.id === "playA" && state.a) play(state.a);
+    else if (t.id === "playB" && state.b) play(state.b);
+    else if (t.id === "playAB" && state.a && state.b) { await play(state.a); await new Promise(r => setTimeout(r, 250)); play(state.b); }
+    else if (t.id === "clearAB") { state.a = state.b = null; draw(); }
+    else if (t.id === "refresh") load();
+    else if (t.id === "renderPreset") { await api(`/api/presets/${$("#preset").value}/render`, { method: "POST", body: "{}" }); await load(); play(state.renders[0].id); }
+    else if (d.tweak) {
+      const input = document.querySelector(`[data-patch="${d.tweak}"]`);
+      const errEl = document.querySelector(`[data-err="${d.tweak}"]`);
+      errEl.textContent = "";
+      let patch; try { patch = JSON.parse(input.value || "{}"); } catch { errEl.textContent = "Patch is not valid JSON."; return; }
+      const res = await api(`/api/renders/${d.tweak}/tweak`, { method: "POST", body: JSON.stringify({ patch }) });
+      await load(); play(res.id);
+    }
+    else if (d.vars) { await api("/api/variations", { method: "POST", body: JSON.stringify({ sound_id: d.vars, count: 4 }) }); await load(); }
+  } catch (err) {
+    const errEl = document.querySelector(`[data-err="${d.tweak || d.vars || ""}"]`);
+    if (errEl) errEl.textContent = err.message; else alert(err.message);
+  }
+});
+
+load().catch(err => { $("#list").innerHTML = `<div class="empty">${err.message}</div>`; });
+</script>
+</body>
+</html>

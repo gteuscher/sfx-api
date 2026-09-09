@@ -13,7 +13,7 @@ from typing import Any
 from mcp.server.mcpserver import MCPServer
 
 from sfx import store
-from sfx.spec.models import SoundSpec, spec_json_schema
+from sfx.spec.models import SoundSpec, compact_schema, spec_json_schema
 
 INSTRUCTIONS = """\
 sfx-api renders short video-game sound effects from a JSON SoundSpec using layered
@@ -55,11 +55,30 @@ def presets_resource() -> str:
 
 
 @mcp.tool(
-    description="Return the SoundSpec JSON schema, the cookbook, and preset names. Call once before designing sounds.",
+    description=(
+        "Documentation for designing sounds. section: 'all' (compact schema + cookbook + preset names), "
+        "'schema' (compact field list), 'json_schema' (full JSON schema), 'cookbook', or 'presets' (full preset specs). "
+        "Call with 'all' once before designing sounds."
+    ),
     structured_output=False,
 )
-def sfx_docs() -> dict[str, Any]:
-    return {"schema": spec_json_schema(), "cookbook": cookbook_resource(), "presets": sorted(store.all_presets())}
+def sfx_docs(section: str = "all") -> str:
+    if section == "schema":
+        return compact_schema()
+    if section == "json_schema":
+        return json.dumps(spec_json_schema(), indent=1)
+    if section == "cookbook":
+        return cookbook_resource()
+    if section == "presets":
+        return json.dumps(store.all_presets(), indent=1)
+    return (
+        "# SoundSpec fields (compact; call sfx_docs('json_schema') for the full schema)\n\n"
+        + compact_schema()
+        + "\n\n# Presets: "
+        + ", ".join(sorted(store.all_presets()))
+        + " (call sfx_docs('presets') for their specs)\n\n"
+        + cookbook_resource()
+    )
 
 
 @mcp.tool(description="List available presets with a one-line summary of each.")
