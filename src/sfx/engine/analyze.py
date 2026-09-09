@@ -9,6 +9,8 @@ Definitions (all times in ms, levels in dB):
 - tail_silence_ms: silence after the last active sample.
 - pitch_hz_start / pitch_hz_end: autocorrelation pitch of the first and last 40 ms of activity.
   None when there is no clear periodicity (noise-dominated).
+- onsets_ms: times where the envelope rises above 30 percent of peak after dipping below 10
+  percent, up to 16 entries. Verifies multi-note and stuttered sounds.
 - spectral_centroid_hz: magnitude-weighted mean frequency. White noise pulls this high.
 - band_db: energy share of low (<250 Hz), mid (250-2000), high (>2000) in dB relative to total.
 """
@@ -88,6 +90,19 @@ def analyze(x: np.ndarray, sr: int) -> dict:
         if len(idx):
             decay_end = first_peak + int(idx[0])
 
+    # onsets: rises above 30% after a dip below 10%, on the 2 ms decimated envelope
+    dec_all = env[::step]
+    onsets: list[float] = []
+    armed = True
+    for i, v in enumerate(dec_all):
+        if armed and v >= 0.3 * emax:
+            onsets.append(round(i * step * ms, 1))
+            armed = False
+        elif not armed and v < 0.1 * emax:
+            armed = True
+        if len(onsets) >= 16:
+            break
+
     w = int(0.04 * sr)
     head = x[onset : onset + w]
     tail = x[max(last - w, onset) : last + 1]
@@ -109,6 +124,7 @@ def analyze(x: np.ndarray, sr: int) -> dict:
         "attack_ms": round((first_peak - onset) * ms, 1),
         "decay_ms": round((decay_end - first_peak) * ms, 1),
         "tail_silence_ms": round((n - 1 - last) * ms, 1),
+        "onsets_ms": onsets,
         "peak_dbfs": round(peak_db(x), 2) if peak > 0 else None,
         "rms_dbfs": round(20 * np.log10(rms), 2) if rms > 0 else None,
         "lufs": round(lufs, 2) if lufs is not None else None,

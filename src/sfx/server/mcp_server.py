@@ -54,7 +54,10 @@ def presets_resource() -> str:
 # --------------------------------------------------------------------------- tools
 
 
-@mcp.tool(description="Return the SoundSpec JSON schema and the cookbook. Call once before designing sounds.")
+@mcp.tool(
+    description="Return the SoundSpec JSON schema, the cookbook, and preset names. Call once before designing sounds.",
+    structured_output=False,
+)
 def sfx_docs() -> dict[str, Any]:
     return {"schema": spec_json_schema(), "cookbook": cookbook_resource(), "presets": sorted(store.all_presets())}
 
@@ -75,7 +78,8 @@ def sfx_list_presets() -> dict[str, Any]:
     description=(
         "Render a SoundSpec to a 16-bit mono WAV. Returns the file path, an id for later tweaks, "
         "features (active_ms, attack_ms, decay_ms, pitch_hz_start/end, band_db, lufs; definitions in the cookbook), "
-        "normalization info, and warnings such as a missed loudness target."
+        "normalization info, and warnings such as a missed loudness target. out_dir defaults to the "
+        "SFX_OUT_DIR environment variable or ./out under the server's working directory."
     )
 )
 def sfx_render(spec: dict[str, Any], out_dir: str | None = None) -> dict[str, Any]:

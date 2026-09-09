@@ -133,3 +133,16 @@ def test_analyze_pitch_and_attack():
     assert info["pitch_hz_end"] is not None and info["pitch_hz_end"] < 0.7 * info["pitch_hz_start"]
     assert info["attack_ms"] < 10
     assert info["active_ms"] < 220
+
+
+def test_analyze_onsets_for_two_notes():
+    from sfx.spec.models import FMSource
+
+    note = dict(source=FMSource(mod_ratio=3, index=2.5, index_end=0.3), amp=Amp(attack_ms=1, decay_ms=60))
+    spec = SoundSpec(
+        name="confirm",
+        layers=[Layer(id="a", pitch=Pitch(start_hz=880), **note), Layer(id="b", pitch=Pitch(start_hz=1320), start_ms=85, **note)],
+    )
+    info = analyze(render(spec).astype(np.float64), SR)
+    assert len(info["onsets_ms"]) == 2
+    assert 70 < info["onsets_ms"][1] < 100

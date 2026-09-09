@@ -82,9 +82,10 @@ def normalize(x: np.ndarray, sr: int, target_lufs: float | None, ceiling_dbtp: f
         info["target_miss_db"] = miss
         if miss < -1.5:
             info["warnings"].append(
-                f"loudness landed {abs(miss)} dB below target_lufs because the true_peak_dbtp ceiling "
-                "limits short or peaky sounds; lower amp.punch, add a compressor, or lengthen the sound "
-                "rather than raising target_lufs"
+                f"loudness landed {abs(miss)} dB below target_lufs: the true_peak_dbtp ceiling stopped the gain, "
+                "so this sound is effectively peak-normalized. Normal for sounds under about 250 ms; raising "
+                "target_lufs will not help. If it matters, lower amp.punch, use linear decay, or lengthen it; "
+                "a master compressor helps only partially on short sounds."
             )
     if info["limited_db"] > 3:
         info["warnings"].append(f"peak limiter worked hard ({info['limited_db']} dB); transients may be squashed")

@@ -79,8 +79,9 @@ Small grenade: halve every decay and drop the sub to 60 Hz.
 
 **UI click, tick, confirm.** Preset `ui_click`. FM: `mod_ratio` 3 to 5, `index` 3 decaying to
 0, pitch 1200 to 2400 Hz, attack 0.5 ms, decay 30 to 60 ms. Highpass 400 Hz. Confirm: two
-layers, the second with `start_ms` 70 to 90 and pitch a fourth or fifth higher; a single layer
-with `curve` step only works if `hold_ms` is at least as long as `step_at_ms`. Hover or very
+layers, the second with `start_ms` 70 to 90 and pitch a fourth or fifth higher, for example 880
+Hz then 1175 Hz (fourth) or 1320 Hz (fifth); a single layer with `curve` step only works if
+`hold_ms` is at least as long as `step_at_ms`. Hover or very
 quiet: `target_lufs` null, `gain_db` -18. Cancel or error: square with `duty` 0.25 falling from
 400 to 200 Hz, or a `retrigger_hz` 40 square at 150 Hz with distortion 10 dB for a buzz.
 
@@ -88,8 +89,8 @@ quiet: `target_lufs` null, `gain_db` -18. Cancel or error: square with `duty` 0.
 ms, decay 40 ms. Highpass 300. Quiet: `target_lufs` -20.
 
 **Powerup, level up.** Preset `powerup`. Square `duty` 0.3, pitch rising 300 to 1300 Hz over 400
-to 600 ms with `retrigger_hz` 12 to 16 so it stutters upward. Sustain 0.85 for most of the
-length. Light reverb. Grander: add an FM bell layer with `arpeggio_semitones` [0, 4, 7, 12] and
+to 600 ms with `retrigger_hz` 12 to 16 so it stutters upward. `sustain` 0.85 with `sustain_ms`
+380 so the rise has a body (sustain_ms defaults to 0). Light reverb. Grander: add an FM bell layer with `arpeggio_semitones` [0, 4, 7, 12] and
 a longer release. Fanfare or short melody: one layer per note with `start_ms` offsets (notes of
 120 to 200 ms each) is clearest; `curve` step gives two notes; `arpeggio_semitones` at 8 to 12 Hz
 gives a fast run, at 20 Hz or more it reads as a chord-like buzz.
@@ -170,7 +171,11 @@ square, base 0.35, freq_ramp 0.25, sustain 0.15.
 - `decay_ms` runs from that first maximum until the envelope stays below -40 dB for 20 ms. For
   retriggered or sustained sounds it runs to the end of activity, so read `active_ms` instead.
 - `pitch_hz_start` and `pitch_hz_end` are autocorrelation estimates over the first and last 40
-  ms of activity; use them to confirm slides. They are null for noise-dominated sounds.
+  ms of activity; use them to confirm slides. They are null for noise-dominated sounds, can fold
+  an octave down, and are skewed by reverb tails and overlapping notes; trust the spec over the
+  estimate when they disagree by exactly an octave.
+- `onsets_ms` lists where the envelope rises past 30 percent of peak after a dip below 10
+  percent. A two-note confirm shows two entries; a 14 Hz stutter shows one every 71 ms.
 - `spectral_centroid_hz` is magnitude weighted; any white noise layer drags it up fast.
   `band_db` (energy share below 250 Hz, 250 to 2000, above 2000, in dB relative to total) is the
   better balance check: a meaty hit has `low` near 0 and `high` below -15.

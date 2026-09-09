@@ -102,7 +102,8 @@ Source = Annotated[Union[OscSource, NoiseSource, FMSource, SfxrSource], Field(di
 class Pitch(_Model):
     """Pitch trajectory for osc and fm sources. Noise sources ignore it entirely (bit noise
     has its own bit_rate_hz), so omit pitch on noise layers. Slides run over slide_ms then hold
-    end_hz; slide_ms longer than the layer is clipped, the layer is never extended. Vibrato and
+    end_hz; slide_ms null means the layer's full envelope length; slide_ms longer than the layer
+    is clipped, the layer is never extended. Vibrato and
     arpeggio multiply on top of the slide. arpeggio_semitones loops through the list for the
     whole layer, one entry per 1/arpeggio_hz seconds, starting at the first entry."""
 
@@ -128,9 +129,12 @@ class Amp(_Model):
     """Amplitude envelope. Layer length is attack + hold + decay + sustain_ms + release, except
     that release is skipped when sustain is 0 (decay already reaches silence). With curve exp,
     decay_ms is the time to -60 dB (silence) and the level passes -40 dB at two thirds of it, so
-    the audible length is a little shorter than decay_ms; use linear for a fuller decay. retrigger_hz restarts an attack-then-decay-to-silence
-    gate every 1/retrigger_hz seconds, multiplied by the overall envelope, so a stutter still
-    fades out with decay and ends with the layer. Pitch slides, filter sweeps, oscillator phase
+    the audible length is a little shorter than decay_ms; use linear for a fuller decay.
+    retrigger_hz restarts a gate every 1/retrigger_hz seconds: the gate rises over
+    attack_ms then falls to silence over the rest of that period (so the gate's own decay is the
+    period minus attack, not decay_ms). The gate multiplies the overall envelope, so a stutter
+    still fades with decay_ms and ends with the layer; hold and sustain shape only the overall
+    envelope. Pitch slides, filter sweeps, oscillator phase
     and noise continue uninterrupted across retriggers; only amplitude restarts."""
 
     attack_ms: float = Field(2.0, ge=0)
@@ -147,8 +151,8 @@ class Amp(_Model):
 
 
 class Filter(_Model):
-    """Resonant biquad filter with optional cutoff sweep over the layer (exponential from
-    cutoff_hz to end_cutoff_hz). Gain at cutoff is 0 dB, so a narrow bandpass (q above 2) on
+    """Resonant biquad filter with optional cutoff sweep across the layer's full envelope length
+    (exponential from cutoff_hz to end_cutoff_hz, reaching end_cutoff_hz at the last sample). Gain at cutoff is 0 dB, so a narrow bandpass (q above 2) on
     noise passes little energy: raise the layer's gain_db by 6 to 12 dB to compensate."""
 
     type: Literal["lowpass", "highpass", "bandpass"] = "lowpass"
