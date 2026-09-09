@@ -93,6 +93,18 @@ everything two octaves, saw instead of FM, lowpass 1500, add brown noise bed.
 for a chug, lowpass 800, distortion 6 dB. Ambience and loops are not seamless yet; keep them short
 or crossfade in the engine.
 
+## sfxr compatibility
+
+If you already know sfxr or jsfxr, use `{"type": "sfxr", ...}` as a layer source with the original
+`p_*` field names and 0 to 1 ranges (signed fields are -1 to 1). The layer's own `pitch` and `amp`
+are ignored because sfxr brings its own; `filter`, `fx`, `gain_db`, and `start_ms` still apply, so
+you can stack an sfxr voice with native layers. Quick reference: `p_base_freq` 0.3 is about 440 Hz,
+`p_freq_ramp` negative falls, `p_arp_mod` positive with `p_arp_speed` 0.5 to 0.7 gives the coin
+jump, `p_repeat_speed` 0.4 to 0.7 stutters, `p_lpf_freq` 1.0 bypasses the filter. Classic sfxr
+starting points: pickup = square, sustain 0.1, decay 0.4, base 0.5, arp_mod 0.4, arp_speed 0.6;
+laser = saw, base 0.6, freq_limit 0.2, freq_ramp -0.3; explosion = noise, base 0.15, freq_ramp
+-0.1, decay 0.5, punch 0.3; jump = square, base 0.35, freq_ramp 0.25, sustain 0.15.
+
 ## Mixing rules of thumb
 
 - Layer gains are relative. Let the master `target_lufs` set overall loudness.

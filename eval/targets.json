@@ -1,0 +1,30 @@
+{
+  "A": [
+    "retro laser pistol shot, short and zappy",
+    "boss cannon shot, heavy and slow with a long rumble",
+    "player jump, small and bouncy",
+    "double jump with a fluttery second hop",
+    "classic coin pickup"
+  ],
+  "B": [
+    "rare gem pickup, sparkly and longer than a coin",
+    "sword hit on flesh, meaty and wet",
+    "sword clang against a metal shield, ringing",
+    "small grenade explosion with debris",
+    "UI hover tick, very quiet and tiny"
+  ],
+  "C": [
+    "UI confirm, two rising notes, friendly",
+    "UI error buzz, harsh but short",
+    "level-up fanfare with a stuttering rise",
+    "player hurt, synthy grunt",
+    "enemy death, crunchy and descending"
+  ],
+  "D": [
+    "footstep on stone, render 4 variations",
+    "sword swing whoosh",
+    "ice magic spell cast, crystalline and cold",
+    "wooden door creaking open",
+    "low health alarm beep, one cycle"
+  ]
+}

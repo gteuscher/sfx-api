@@ -86,3 +86,27 @@ def test_render_to_file_roundtrip(tmp_path):
     assert loaded == spec
     info = store.analyze_file(res["id"], tmp_path)
     assert info["sample_rate"] == 44100
+
+
+def test_sfxr_source_renders_and_matches_declared_length():
+    from sfx.spec.models import SfxrSource
+
+    src = SfxrSource(wave="square", p_env_sustain=0.1, p_env_decay=0.4, p_base_freq=0.5, p_arp_mod=0.4, p_arp_speed=0.6)
+    layer = Layer(id="s", source=src)
+    spec = SoundSpec(name="sfxr", layers=[layer], master={"target_lufs": None})
+    x = render(spec)
+    assert abs(len(x) - round(layer.duration_ms() * SR / 1000)) <= 2
+    assert np.max(np.abs(x)) > 0.05
+    # the same params at 48 kHz give the same duration in seconds
+    spec48 = SoundSpec(name="sfxr48", sample_rate=48000, layers=[layer], master={"target_lufs": None})
+    assert abs(len(render(spec48)) / 48000 - len(x) / SR) < 0.002
+
+
+def test_sfxr_freq_limit_stops_early():
+    from sfx.engine.sfxr import render_sfxr
+    from sfx.spec.models import SfxrSource
+
+    laser = SfxrSource(wave="saw", p_env_sustain=0.2, p_env_decay=0.25, p_base_freq=0.6, p_freq_limit=0.2, p_freq_ramp=-0.3)
+    full = SfxrSource(wave="saw", p_env_sustain=0.2, p_env_decay=0.25, p_base_freq=0.6, p_freq_ramp=-0.3)
+    rng = np.random.default_rng(0)
+    assert len(render_sfxr(laser, rng)) < len(render_sfxr(full, rng))

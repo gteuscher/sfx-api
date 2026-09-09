@@ -57,7 +57,40 @@ class FMSource(_Model):
     index_curve: Literal["linear", "exp"] = "exp"
 
 
-Source = Annotated[Union[OscSource, NoiseSource, FMSource], Field(discriminator="type")]
+class SfxrSource(_Model):
+    """A complete sfxr / jsfxr sound as one source. Field names and ranges match jsfxr, so
+    existing sfxr presets paste straight in. When a layer uses this source, the layer's own
+    pitch and amp settings are ignored: sfxr has its own envelope and pitch model. Layer
+    filter, fx, gain, and start_ms still apply."""
+
+    type: Literal["sfxr"] = "sfxr"
+    wave: Literal["square", "saw", "sine", "noise"] = "square"
+    p_env_attack: float = Field(0.0, ge=0, le=1)
+    p_env_sustain: float = Field(0.3, ge=0, le=1)
+    p_env_punch: float = Field(0.0, ge=0, le=1)
+    p_env_decay: float = Field(0.4, ge=0, le=1)
+    p_base_freq: float = Field(0.3, ge=0, le=1, description="0.3 is about 440 Hz, 0.5 about 1200 Hz.")
+    p_freq_limit: float = Field(0.0, ge=0, le=1, description="Stop when pitch falls below this. 0 disables.")
+    p_freq_ramp: float = Field(0.0, ge=-1, le=1, description="Pitch slide. Negative falls.")
+    p_freq_dramp: float = Field(0.0, ge=-1, le=1, description="Change of slide over time.")
+    p_vib_strength: float = Field(0.0, ge=0, le=1)
+    p_vib_speed: float = Field(0.0, ge=0, le=1)
+    p_arp_mod: float = Field(0.0, ge=-1, le=1, description="Pitch jump after arp_speed. Positive jumps up.")
+    p_arp_speed: float = Field(0.0, ge=0, le=1, description="When the jump happens. 1 disables.")
+    p_duty: float = Field(0.0, ge=0, le=1, description="Square only. 0 is 50 percent, 1 is a needle.")
+    p_duty_ramp: float = Field(0.0, ge=-1, le=1)
+    p_repeat_speed: float = Field(0.0, ge=0, le=1, description="Retrigger rate. 0 disables.")
+    p_pha_offset: float = Field(0.0, ge=-1, le=1, description="Phaser / flanger offset.")
+    p_pha_ramp: float = Field(0.0, ge=-1, le=1)
+    p_lpf_freq: float = Field(1.0, ge=0, le=1, description="1 bypasses the low-pass filter.")
+    p_lpf_ramp: float = Field(0.0, ge=-1, le=1)
+    p_lpf_resonance: float = Field(0.0, ge=0, le=1)
+    p_hpf_freq: float = Field(0.0, ge=0, le=1)
+    p_hpf_ramp: float = Field(0.0, ge=-1, le=1)
+    sound_vol: float = Field(0.5, ge=0, le=1)
+
+
+Source = Annotated[Union[OscSource, NoiseSource, FMSource, SfxrSource], Field(discriminator="type")]
 
 
 # --------------------------------------------------------------------------- modulation
@@ -187,6 +220,9 @@ class Layer(_Model):
     start_ms: float = Field(0.0, ge=0, description="When this layer starts relative to the sound.")
 
     def duration_ms(self) -> float:
+        if isinstance(self.source, SfxrSource):
+            s = self.source
+            return (s.p_env_attack**2 + s.p_env_sustain**2 + s.p_env_decay**2) * 100000 / 44.1
         a = self.amp
         return a.attack_ms + a.hold_ms + a.decay_ms + a.sustain_ms + a.release_ms
 

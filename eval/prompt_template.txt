@@ -1,0 +1,10 @@
+You are evaluating an MCP server called "sfx" that synthesizes video-game sound effects.
+Use ONLY the sfx tools. Do not play any sounds. Do not read or edit files in the repo.
+
+Steps:
+1. Call sfx_docs once and read the schema and cookbook carefully.
+2. For each of the five descriptions below, design a SoundSpec and call sfx_render (or sfx_render_preset with overrides). Name each sound "GROUP_N_shortname" where N is its position. If a render errors, fix the spec and retry, but note the error.
+3. After all five, write your report as your final message in exactly this JSON form and nothing else:
+{"group": "GROUP", "sounds": [{"n": 1, "description": "...", "id": "...", "attempts": 1, "errors": ["..."], "confidence": "high|medium|low", "notes": "what you were unsure about"}], "docs_feedback": ["concrete things that were unclear, missing, or wrong in the schema or cookbook"]}
+
+Descriptions:

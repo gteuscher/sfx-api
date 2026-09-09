@@ -1,0 +1,22 @@
+{
+  "name": "sfxr_pickup",
+  "layers": [
+    {
+      "id": "sfxr",
+      "source": {
+        "type": "sfxr",
+        "wave": "square",
+        "p_env_sustain": 0.12,
+        "p_env_punch": 0.45,
+        "p_env_decay": 0.38,
+        "p_base_freq": 0.52,
+        "p_arp_mod": 0.42,
+        "p_arp_speed": 0.58
+      }
+    }
+  ],
+  "master": {
+    "target_lufs": -16,
+    "true_peak_dbtp": -1
+  }
+}

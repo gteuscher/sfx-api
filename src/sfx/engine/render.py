@@ -10,8 +10,9 @@ from sfx.engine.envelopes import amp_envelope, pitch_track
 from sfx.engine.filters import apply_filter
 from sfx.engine.fx import apply_effects
 from sfx.engine.normalize import normalize
+from sfx.engine.sfxr import render_sfxr_at
 from sfx.engine.sources import fm, noise, oscillator
-from sfx.spec.models import FMSource, Layer, NoiseSource, OscSource, SoundSpec
+from sfx.spec.models import FMSource, Layer, NoiseSource, OscSource, SfxrSource, SoundSpec
 
 
 def _ms(ms: float, sr: int) -> int:
@@ -19,10 +20,17 @@ def _ms(ms: float, sr: int) -> int:
 
 
 def render_layer(layer: Layer, sr: int, rng: np.random.Generator) -> np.ndarray:
+    src = layer.source
+    if isinstance(src, SfxrSource):
+        sig = render_sfxr_at(src, sr, rng)
+        if layer.filter is not None:
+            sig = apply_filter(sig, layer.filter, sr)
+        if layer.fx:
+            sig = apply_effects(sig, layer.fx, sr)
+        return sig * 10 ** (layer.gain_db / 20.0)
     env = amp_envelope(layer.amp, sr)
     n = len(env)
     freq = pitch_track(layer.pitch, n, sr)
-    src = layer.source
     if isinstance(src, OscSource):
         sig = oscillator(src, freq, sr)
     elif isinstance(src, NoiseSource):

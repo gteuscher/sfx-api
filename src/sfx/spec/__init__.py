@@ -7,6 +7,7 @@ from sfx.spec.models import (
     NoiseSource,
     OscSource,
     Pitch,
+    SfxrSource,
     SoundSpec,
     Variation,
 )
@@ -20,6 +21,7 @@ __all__ = [
     "NoiseSource",
     "OscSource",
     "Pitch",
+    "SfxrSource",
     "SoundSpec",
     "Variation",
 ]
