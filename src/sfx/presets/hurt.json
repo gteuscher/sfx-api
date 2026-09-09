@@ -1,0 +1,20 @@
+{
+  "name": "hurt",
+  "layers": [
+    {
+      "id": "body",
+      "source": {"type": "osc", "wave": "square", "duty": 0.25},
+      "pitch": {"start_hz": 520, "end_hz": 140, "curve": "exp", "slide_ms": 150},
+      "amp": {"attack_ms": 1, "decay_ms": 130, "release_ms": 40, "punch": 0.2},
+      "fx": [{"type": "bitcrush", "bits": 6, "rate_hz": 11025}]
+    },
+    {
+      "id": "grit",
+      "source": {"type": "noise", "color": "white"},
+      "amp": {"attack_ms": 0, "decay_ms": 80, "release_ms": 20},
+      "filter": {"type": "bandpass", "cutoff_hz": 1200, "q": 1.5},
+      "gain_db": -10
+    }
+  ],
+  "master": {"target_lufs": -16, "true_peak_dbtp": -1}
+}

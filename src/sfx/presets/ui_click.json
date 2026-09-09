@@ -1,0 +1,13 @@
+{
+  "name": "ui_click",
+  "layers": [
+    {
+      "id": "tick",
+      "source": {"type": "fm", "carrier_ratio": 1, "mod_ratio": 3.5, "index": 3, "index_end": 0.1},
+      "pitch": {"start_hz": 1800},
+      "amp": {"attack_ms": 0.5, "decay_ms": 45, "release_ms": 10},
+      "filter": {"type": "highpass", "cutoff_hz": 400, "q": 0.7}
+    }
+  ],
+  "master": {"target_lufs": -20, "true_peak_dbtp": -1}
+}

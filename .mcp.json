@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "sfx": {
+      "command": "C:\\dev\\sfx-api\\.venv\\Scripts\\sfx-mcp.exe",
+      "env": {
+        "SFX_OUT_DIR": "C:\\dev\\sfx-api\\out"
+      }
+    }
+  }
+}

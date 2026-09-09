@@ -1,0 +1,33 @@
+{
+  "name": "explosion",
+  "layers": [
+    {
+      "id": "sub",
+      "source": {"type": "osc", "wave": "sine"},
+      "pitch": {"start_hz": 90, "end_hz": 28, "curve": "exp", "slide_ms": 500},
+      "amp": {"attack_ms": 3, "decay_ms": 650, "release_ms": 100, "punch": 0.5},
+      "gain_db": -2
+    },
+    {
+      "id": "blast",
+      "source": {"type": "noise", "color": "brown"},
+      "amp": {"attack_ms": 5, "hold_ms": 40, "decay_ms": 900, "release_ms": 250},
+      "filter": {"type": "lowpass", "cutoff_hz": 3500, "end_cutoff_hz": 180, "q": 1.1},
+      "fx": [{"type": "distortion", "drive_db": 14}]
+    },
+    {
+      "id": "crackle",
+      "source": {"type": "noise", "color": "bit", "bit_rate_hz": 6000, "bit_rate_end_hz": 500},
+      "amp": {"attack_ms": 10, "decay_ms": 450, "release_ms": 100},
+      "filter": {"type": "highpass", "cutoff_hz": 800, "q": 0.7},
+      "gain_db": -10,
+      "start_ms": 20
+    }
+  ],
+  "master": {
+    "fx": [{"type": "reverb", "room": 0.5, "damping": 0.6, "wet": 0.2}],
+    "target_lufs": -14,
+    "true_peak_dbtp": -1,
+    "tail_ms": 300
+  }
+}

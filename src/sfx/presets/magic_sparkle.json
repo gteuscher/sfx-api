@@ -1,0 +1,25 @@
+{
+  "name": "magic_sparkle",
+  "layers": [
+    {
+      "id": "bells",
+      "source": {"type": "fm", "carrier_ratio": 1, "mod_ratio": 1.41, "index": 4, "index_end": 0.5},
+      "pitch": {"start_hz": 1200, "arpeggio_semitones": [0, 7, 12, 19, 24], "arpeggio_hz": 24},
+      "amp": {"attack_ms": 5, "decay_ms": 300, "sustain": 0.3, "sustain_ms": 200, "release_ms": 300},
+      "fx": [{"type": "chorus", "rate_hz": 2, "depth_ms": 3, "wet": 0.4}]
+    },
+    {
+      "id": "shimmer",
+      "source": {"type": "osc", "wave": "triangle"},
+      "pitch": {"start_hz": 2400, "vibrato_cents": 40, "vibrato_hz": 8},
+      "amp": {"attack_ms": 40, "decay_ms": 500, "release_ms": 200},
+      "gain_db": -9
+    }
+  ],
+  "master": {
+    "fx": [{"type": "reverb", "room": 0.6, "damping": 0.4, "wet": 0.3}],
+    "target_lufs": -18,
+    "true_peak_dbtp": -1,
+    "tail_ms": 400
+  }
+}

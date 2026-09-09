@@ -1,0 +1,14 @@
+{
+  "name": "laser",
+  "layers": [
+    {
+      "id": "beam",
+      "source": {"type": "osc", "wave": "saw"},
+      "pitch": {"start_hz": 1400, "end_hz": 220, "curve": "exp", "slide_ms": 220},
+      "amp": {"attack_ms": 1, "hold_ms": 10, "decay_ms": 200, "release_ms": 30, "punch": 0.3},
+      "filter": {"type": "lowpass", "cutoff_hz": 7000, "end_cutoff_hz": 1200, "q": 1.4},
+      "fx": [{"type": "bitcrush", "bits": 8}]
+    }
+  ],
+  "master": {"target_lufs": -16, "true_peak_dbtp": -1}
+}

@@ -1,0 +1,13 @@
+{
+  "name": "blip",
+  "layers": [
+    {
+      "id": "blip",
+      "source": {"type": "osc", "wave": "square", "duty": 0.25},
+      "pitch": {"start_hz": 900},
+      "amp": {"attack_ms": 1, "hold_ms": 30, "decay_ms": 40, "release_ms": 10},
+      "filter": {"type": "highpass", "cutoff_hz": 300, "q": 0.7}
+    }
+  ],
+  "master": {"target_lufs": -20, "true_peak_dbtp": -1}
+}

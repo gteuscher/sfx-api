@@ -1,0 +1,19 @@
+{
+  "name": "powerup",
+  "layers": [
+    {
+      "id": "rise",
+      "source": {"type": "osc", "wave": "square", "duty": 0.3},
+      "pitch": {"start_hz": 300, "end_hz": 1300, "curve": "exp", "slide_ms": 450},
+      "amp": {"attack_ms": 2, "decay_ms": 40, "sustain": 0.85, "sustain_ms": 380, "release_ms": 80, "retrigger_hz": 14},
+      "filter": {"type": "lowpass", "cutoff_hz": 6000, "q": 0.8},
+      "fx": [{"type": "bitcrush", "bits": 8}]
+    }
+  ],
+  "master": {
+    "fx": [{"type": "reverb", "room": 0.25, "wet": 0.12}],
+    "target_lufs": -16,
+    "true_peak_dbtp": -1,
+    "tail_ms": 120
+  }
+}

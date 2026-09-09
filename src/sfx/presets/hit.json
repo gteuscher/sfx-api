@@ -1,0 +1,24 @@
+{
+  "name": "hit",
+  "layers": [
+    {
+      "id": "transient",
+      "source": {"type": "noise", "color": "white"},
+      "amp": {"attack_ms": 0, "decay_ms": 70, "release_ms": 10},
+      "filter": {"type": "lowpass", "cutoff_hz": 5000, "end_cutoff_hz": 600, "q": 1.0},
+      "gain_db": -4
+    },
+    {
+      "id": "body",
+      "source": {"type": "osc", "wave": "sine"},
+      "pitch": {"start_hz": 190, "end_hz": 55, "curve": "exp", "slide_ms": 120},
+      "amp": {"attack_ms": 1, "decay_ms": 220, "release_ms": 30, "punch": 0.6},
+      "fx": [{"type": "distortion", "drive_db": 10}]
+    }
+  ],
+  "master": {
+    "fx": [{"type": "compressor", "threshold_db": -12, "ratio": 4, "attack_ms": 1, "release_ms": 60}],
+    "target_lufs": -14,
+    "true_peak_dbtp": -1
+  }
+}

@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sfx-api"
+version = "0.1.0"
+description = "Local text-to-game-SFX synthesis engine with an MCP server for coding agents"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.12",
+    "soundfile>=0.12",
+    "pyloudnorm>=0.1",
+    "pydantic>=2.6",
+    "mcp>=2.0",
+]
+
+[project.optional-dependencies]
+fx = ["pedalboard>=0.9"]
+dev = ["pytest>=8"]
+
+[project.scripts]
+sfx = "sfx.server.cli:main"
+sfx-mcp = "sfx.server.mcp_server:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+sfx = ["presets/*.json", "cookbook.md"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

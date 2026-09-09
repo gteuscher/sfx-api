@@ -1,0 +1,13 @@
+{
+  "name": "jump",
+  "layers": [
+    {
+      "id": "body",
+      "source": {"type": "osc", "wave": "square", "duty": 0.5},
+      "pitch": {"start_hz": 320, "end_hz": 760, "curve": "exp", "slide_ms": 160},
+      "amp": {"attack_ms": 2, "hold_ms": 30, "decay_ms": 160, "release_ms": 30, "punch": 0.2},
+      "filter": {"type": "lowpass", "cutoff_hz": 5000, "q": 0.9}
+    }
+  ],
+  "master": {"target_lufs": -16, "true_peak_dbtp": -1}
+}
