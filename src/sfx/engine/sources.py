@@ -21,12 +21,13 @@ def oscillator(src: OscSource, freq_hz: np.ndarray, sr: int) -> np.ndarray:
         return 4.0 * np.abs(ph - 0.5) - 1.0
     if src.wave == "saw":
         return 2.0 * ph - 1.0
-    # square / pulse with optional duty sweep
+    # square / pulse with optional duty sweep, DC-free so narrow pulses don't thump
     if src.duty_end is None:
         duty = np.full(n, src.duty)
     else:
         duty = np.linspace(src.duty, src.duty_end, n)
-    return np.where(ph < duty, 1.0, -1.0)
+    raw = np.where(ph < duty, 1.0, -1.0) - (2.0 * duty - 1.0)
+    return raw / (2.0 * np.maximum(duty, 1.0 - duty))
 
 
 def _pink(white: np.ndarray) -> np.ndarray:

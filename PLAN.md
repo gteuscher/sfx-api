@@ -144,7 +144,9 @@ Every render stores the spec next to the WAV as a sidecar JSON, so sounds are re
 
 ## Milestones
 
-Status 2026-09-09: M1 and M2 done, M3 done except the sfxr source port. M4 not started.
+Status 2026-09-09: M1, M2, M3 done including the sfxr port. M4 evaluation done for one round
+(20 sounds, both hosts, all rendered first try; cookbook and feature definitions revised from
+the feedback). Remaining from M4: optional REST endpoint and HTML preview page.
 
 1. Engine and CLI. Sources, envelopes, pitch curves, filters, mixer, loudness normalize, WAV
    writer. `sfx render spec.json` works. Tests with numeric assertions on envelopes and pitch.

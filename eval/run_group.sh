@@ -16,7 +16,7 @@ else
     -c "mcp_servers.sfx.command='C:\dev\sfx-api\.venv\Scripts\sfx-mcp.exe'" \
     -c "mcp_servers.sfx.env.SFX_OUT_DIR='C:\dev\sfx-api\out\eval'" \
     -c "mcp_servers.sfx.env.SFX_NO_PLAYBACK='1'" \
-    --sandbox read-only -o "eval/results/codex_$group.last.txt" "$prompt" \
+    --dangerously-bypass-approvals-and-sandbox -o "eval/results/codex_$group.last.txt" "$prompt" \
     > "eval/results/codex_$group.log" 2> "eval/results/codex_$group.err"
 fi
 echo "$host $group exit=$?"

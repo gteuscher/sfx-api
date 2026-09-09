@@ -98,7 +98,8 @@ def main(argv: list[str] | None = None) -> int:
     elif a.cmd == "demo":
         for name in store.all_presets():
             res = store.render_to_file(store.get_preset(name), out_dir)
-            print(f"{name:16s} {res['duration_ms']:7.1f} ms  {res['lufs']!s:>7} LUFS  {res['path']}")
+            f = res["features"]
+            print(f"{name:16s} {f['duration_ms']:7.1f} ms  {f['lufs']!s:>7} LUFS  {res['path']}  {' '.join(res['warnings'])}")
             if a.play:
                 store.play(res["path"])
     elif a.cmd == "serve":

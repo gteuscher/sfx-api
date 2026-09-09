@@ -36,7 +36,7 @@ def test_pitch_step():
 def test_render_has_expected_duration_and_level():
     spec = SoundSpec(name="t", layers=[Layer(amp=Amp(attack_ms=1, decay_ms=200, release_ms=50))])
     x = render(spec)
-    assert len(x) == round(0.251 * SR)
+    assert len(x) == round(0.201 * SR)  # release skipped when sustain is 0
     assert np.max(np.abs(x)) <= 10 ** (-1 / 20) + 1e-3
     assert np.max(np.abs(x)) > 0.1
 
@@ -58,6 +58,7 @@ def test_loudness_target_is_hit():
     info = analyze(x.astype(np.float64), spec.sample_rate)
     # peak ceiling can pull it below target; it must never be above
     assert info["lufs"] <= spec.master.target_lufs + 1.0
+    assert info["active_ms"] > 500
     assert info["peak_dbfs"] <= -0.9
 
 
@@ -86,6 +87,7 @@ def test_render_to_file_roundtrip(tmp_path):
     assert loaded == spec
     info = store.analyze_file(res["id"], tmp_path)
     assert info["sample_rate"] == 44100
+    assert "features" in res and "warnings" in res
 
 
 def test_sfxr_source_renders_and_matches_declared_length():
@@ -110,3 +112,24 @@ def test_sfxr_freq_limit_stops_early():
     full = SfxrSource(wave="saw", p_env_sustain=0.2, p_env_decay=0.25, p_base_freq=0.6, p_freq_ramp=-0.3)
     rng = np.random.default_rng(0)
     assert len(render_sfxr(laser, rng)) < len(render_sfxr(full, rng))
+
+
+def test_pulse_wave_has_no_dc():
+    from sfx.engine.sources import oscillator
+    from sfx.spec.models import OscSource
+
+    sig = oscillator(OscSource(wave="square", duty=0.15), np.full(SR, 200.0), SR)
+    assert abs(sig.mean()) < 0.01
+    assert np.max(np.abs(sig)) <= 1.0
+
+
+def test_analyze_pitch_and_attack():
+    spec = SoundSpec(
+        name="p",
+        layers=[Layer(pitch=Pitch(start_hz=1600, end_hz=300, curve="exp"), amp=Amp(attack_ms=1, decay_ms=200))],
+    )
+    info = analyze(render(spec).astype(np.float64), SR)
+    assert info["pitch_hz_start"] is not None and 1300 < info["pitch_hz_start"] < 1900
+    assert info["pitch_hz_end"] is not None and info["pitch_hz_end"] < 0.7 * info["pitch_hz_start"]
+    assert info["attack_ms"] < 10
+    assert info["active_ms"] < 220

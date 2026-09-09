@@ -16,7 +16,7 @@ def _segment(start: float, end: float, n: int, curve: str) -> np.ndarray:
         return np.zeros(0)
     if curve == "exp" and start > end:
         # exponential fall that actually reaches `end`
-        floor = max(end, 1e-4)
+        floor = max(end, 1e-3)  # -60 dB at the end of the segment
         seg = start * np.exp(np.linspace(0, np.log(floor / start), n)) if start > 0 else np.zeros(n)
         if end <= 0:
             seg = seg - floor
@@ -32,7 +32,7 @@ def amp_envelope(amp: Amp, sr: int) -> np.ndarray:
         _ms(amp.hold_ms, sr),
         _ms(amp.decay_ms, sr),
         _ms(amp.sustain_ms, sr),
-        _ms(amp.release_ms, sr),
+        _ms(amp.release_ms, sr) if amp.sustain > 0 else 0,
     )
     parts = [
         np.linspace(0.0, 1.0, n_a, endpoint=False),

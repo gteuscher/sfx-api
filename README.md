@@ -58,10 +58,10 @@ tail and play it."
 |---|---|
 | `sfx_docs` | Schema plus cookbook. Agents call this once. |
 | `sfx_list_presets` | Built-in and saved presets. |
-| `sfx_render` | Render a SoundSpec. Returns path, id, and audio features. |
+| `sfx_render` | Render a SoundSpec. Returns path, id, features, normalization info, and warnings. |
 | `sfx_render_preset` | Render a preset with optional overrides. |
 | `sfx_tweak` | JSON merge patch on a previous render by id, re-render. |
-| `sfx_variations` | N pitch, timing, and gain jittered siblings for random containers. |
+| `sfx_variations` | N pitch, filter, timing, and gain jittered siblings for random containers. |
 | `sfx_play` | Play through the default output device. |
 | `sfx_analyze` | Features for any WAV, including reference sounds. |
 | `sfx_save_preset` | Save a spec to the user preset library. |
@@ -108,8 +108,17 @@ sfx list | sfx schema | sfx cookbook | sfx demo | sfx serve
 ```
 
 Sources: `osc` (sine, triangle, saw, square with duty), `noise` (white, pink, brown, bit), `fm`
-(two operators). Effects: bitcrush, distortion, clip, compressor, delay, reverb, chorus, gain,
+(two operators), `sfxr` (a jsfxr-compatible voice with the original `p_*` fields). Effects: bitcrush, distortion, clip, compressor, delay, reverb, chorus, gain,
 pitch_shift. See `PLAN.md` for the design and roadmap.
+
+## Evaluating the docs with real agents
+
+`eval/run_group.sh <claude|codex> <A|B|C|D>` runs a non-interactive host session that reads the
+docs, designs five target sounds from `eval/targets.json`, and reports what was unclear. Codex
+needs `--dangerously-bypass-approvals-and-sandbox` (already in the script) to call MCP tools
+without a human approving each one; interactive Codex sessions prompt instead. Results land in
+`eval/results/` and renders in `out/eval/`. The cookbook's feature definitions, loudness notes,
+and several recipes came out of the first round.
 
 ## Tests
 

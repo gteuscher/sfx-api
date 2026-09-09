@@ -14,7 +14,7 @@ from pathlib import Path
 import numpy as np
 
 from sfx.engine.analyze import analyze
-from sfx.engine.render import render, render_variations
+from sfx.engine.render import render_info, render_variations
 from sfx.engine.wav import read_wav, write_wav
 from sfx.spec.models import SoundSpec
 
@@ -101,25 +101,40 @@ def _make_id(spec: SoundSpec) -> str:
     return f"{safe_name(spec.name)}-{digest}"
 
 
-def write_render(spec: SoundSpec, audio: np.ndarray, out_dir: Path | None = None, sound_id: str | None = None) -> dict:
+def write_render(
+    spec: SoundSpec, audio: np.ndarray, out_dir: Path | None = None, sound_id: str | None = None, norm: dict | None = None
+) -> dict:
     out_dir = Path(out_dir) if out_dir else default_out_dir()
     sound_id = sound_id or _make_id(spec)
     wav_path = write_wav(out_dir / f"{sound_id}.wav", audio, spec.sample_rate)
     json_path = out_dir / f"{sound_id}.json"
     json_path.write_text(json.dumps(spec.model_dump(mode="json"), indent=2), encoding="utf-8")
     info = analyze(np.asarray(audio, dtype=np.float64), spec.sample_rate)
-    return {"id": sound_id, "path": str(wav_path), "spec_path": str(json_path), **info}
+    norm = norm or {}
+    return {
+        "id": sound_id,
+        "path": str(wav_path),
+        "spec_path": str(json_path),
+        "features": info,
+        "normalization": {k: v for k, v in norm.items() if k != "warnings"},
+        "warnings": norm.get("warnings", []),
+    }
 
 
 def render_to_file(spec: SoundSpec, out_dir: Path | None = None) -> dict:
-    return write_render(spec, render(spec), out_dir)
+    audio, norm = render_info(spec)
+    return write_render(spec, audio, out_dir, norm=norm)
 
 
-def render_variations_to_files(spec: SoundSpec, count: int, out_dir: Path | None = None) -> list[dict]:
-    base = _make_id(spec)
+def render_variations_to_files(
+    spec: SoundSpec, count: int, out_dir: Path | None = None, parent_id: str | None = None
+) -> list[dict]:
+    """Variation ids are <parent id>-v1..vN when rendering from a render id, else a fresh id."""
+    base = parent_id or _make_id(spec)
     results = []
-    for i, (s, audio) in enumerate(render_variations(spec, count)):
-        results.append(write_render(s, audio, out_dir, sound_id=f"{base}-v{i + 1}"))
+    for i, (s, _audio) in enumerate(render_variations(spec, count)):
+        audio, norm = render_info(s)
+        results.append(write_render(s, audio, out_dir, sound_id=f"{base}-v{i + 1}", norm=norm))
     return results
 
 

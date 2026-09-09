@@ -56,7 +56,7 @@ def presets_resource() -> str:
 
 @mcp.tool(description="Return the SoundSpec JSON schema and the cookbook. Call once before designing sounds.")
 def sfx_docs() -> dict[str, Any]:
-    return {"schema": spec_json_schema(), "cookbook": cookbook_resource()}
+    return {"schema": spec_json_schema(), "cookbook": cookbook_resource(), "presets": sorted(store.all_presets())}
 
 
 @mcp.tool(description="List available presets with a one-line summary of each.")
@@ -74,7 +74,8 @@ def sfx_list_presets() -> dict[str, Any]:
 @mcp.tool(
     description=(
         "Render a SoundSpec to a 16-bit mono WAV. Returns the file path, an id for later tweaks, "
-        "and audio features (duration, peak, LUFS, attack, decay, spectral centroid)."
+        "features (active_ms, attack_ms, decay_ms, pitch_hz_start/end, band_db, lufs; definitions in the cookbook), "
+        "normalization info, and warnings such as a missed loudness target."
     )
 )
 def sfx_render(spec: dict[str, Any], out_dir: str | None = None) -> dict[str, Any]:
@@ -114,7 +115,8 @@ def sfx_tweak(sound_id: str, patch: dict[str, Any], out_dir: str | None = None) 
 @mcp.tool(
     description=(
         "Render N randomized siblings of a sound (by id, path, or inline spec) for engine random "
-        "containers. Jitter amounts come from spec.variation: pitch_cents, timing_ms, gain_db."
+        "containers. Jitter amounts come from spec.variation: pitch_cents, filter_cents, timing_ms, gain_db. "
+        "Ids are <parent id>-v1..vN."
     )
 )
 def sfx_variations(
@@ -127,7 +129,8 @@ def sfx_variations(
         raise ValueError("pass sound_id or spec")
     model = SoundSpec.model_validate(spec) if spec is not None else store.load_spec(sound_id, _out(out_dir))
     count = max(1, min(int(count), 32))
-    return {"variations": store.render_variations_to_files(model, count, _out(out_dir))}
+    parent = sound_id if (spec is None and sound_id and not sound_id.lower().endswith(".wav")) else None
+    return {"variations": store.render_variations_to_files(model, count, _out(out_dir), parent_id=parent)}
 
 
 @mcp.tool(description="Play a WAV (by id or path) through the machine's default audio output so the user can hear it.")
@@ -135,7 +138,7 @@ def sfx_play(sound_id: str, out_dir: str | None = None) -> dict[str, Any]:
     return store.play(sound_id, _out(out_dir))
 
 
-@mcp.tool(description="Measure a WAV: duration, peak, LUFS, attack, decay, spectral centroid, dominant pitch.")
+@mcp.tool(description="Measure any WAV: active_ms, attack_ms, decay_ms, pitch_hz_start/end, band_db, lufs, peak. Definitions in the cookbook.")
 def sfx_analyze(sound_id: str, out_dir: str | None = None) -> dict[str, Any]:
     return store.analyze_file(sound_id, _out(out_dir))
 

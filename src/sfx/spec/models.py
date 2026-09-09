@@ -47,7 +47,10 @@ class NoiseSource(_Model):
 
 
 class FMSource(_Model):
-    """Two-operator FM. Good for bells, UI blips, metallic hits, and sci-fi tones."""
+    """Two-operator FM. Good for bells, UI blips, metallic hits, and sci-fi tones.
+    index 1 to 3 is mellow and electric-piano like, 4 to 8 is bright and bell like,
+    10 to 20 is clangorous metal and noise. Inharmonic mod_ratio (1.41, 2.76, 3.7, 5.3)
+    gives metal and glass; integer ratios give musical tones."""
 
     type: Literal["fm"] = "fm"
     carrier_ratio: float = Field(1.0, gt=0, description="Carrier frequency as a multiple of the pitch.")
@@ -97,7 +100,11 @@ Source = Annotated[Union[OscSource, NoiseSource, FMSource, SfxrSource], Field(di
 
 
 class Pitch(_Model):
-    """Pitch trajectory. Noise sources ignore start_hz except for bit noise rate (use bit_rate_hz)."""
+    """Pitch trajectory for osc and fm sources. Noise sources ignore it entirely (bit noise
+    has its own bit_rate_hz), so omit pitch on noise layers. Slides run over slide_ms then hold
+    end_hz; slide_ms longer than the layer is clipped, the layer is never extended. Vibrato and
+    arpeggio multiply on top of the slide. arpeggio_semitones loops through the list for the
+    whole layer, one entry per 1/arpeggio_hz seconds, starting at the first entry."""
 
     start_hz: float = Field(440.0, ge=10, le=20000)
     end_hz: float | None = Field(None, ge=10, le=20000, description="Target pitch. None means no slide.")
@@ -118,7 +125,13 @@ class Pitch(_Model):
 
 
 class Amp(_Model):
-    """Amplitude envelope. Layer length is attack + hold + decay + sustain_ms + release."""
+    """Amplitude envelope. Layer length is attack + hold + decay + sustain_ms + release, except
+    that release is skipped when sustain is 0 (decay already reaches silence). With curve exp,
+    decay_ms is the time to -60 dB (silence) and the level passes -40 dB at two thirds of it, so
+    the audible length is a little shorter than decay_ms; use linear for a fuller decay. retrigger_hz restarts an attack-then-decay-to-silence
+    gate every 1/retrigger_hz seconds, multiplied by the overall envelope, so a stutter still
+    fades out with decay and ends with the layer. Pitch slides, filter sweeps, oscillator phase
+    and noise continue uninterrupted across retriggers; only amplitude restarts."""
 
     attack_ms: float = Field(2.0, ge=0)
     hold_ms: float = Field(0.0, ge=0, description="Time at full level after the attack.")
@@ -134,7 +147,9 @@ class Amp(_Model):
 
 
 class Filter(_Model):
-    """Resonant biquad filter with optional cutoff sweep over the layer."""
+    """Resonant biquad filter with optional cutoff sweep over the layer (exponential from
+    cutoff_hz to end_cutoff_hz). Gain at cutoff is 0 dB, so a narrow bandpass (q above 2) on
+    noise passes little energy: raise the layer's gain_db by 6 to 12 dB to compensate."""
 
     type: Literal["lowpass", "highpass", "bandpass"] = "lowpass"
     cutoff_hz: float = Field(8000.0, ge=20, le=20000)
@@ -146,12 +161,18 @@ class Filter(_Model):
 
 
 class Bitcrush(_Model):
+    """Lower bits for more grit (4 is harsh, 8 is classic, 12 is subtle); lower rate_hz for
+    aliasing crunch. There is no drive parameter; to soften it, raise bits."""
+
     type: Literal["bitcrush"] = "bitcrush"
     bits: float = Field(8, ge=1, le=16)
     rate_hz: float | None = Field(None, ge=500, le=48000, description="Sample-rate reduction. None keeps full rate.")
 
 
 class Distortion(_Model):
+    """Soft clip (tanh). Output is normalized to about -1 dBFS regardless of drive, so a
+    distorted layer lands hot in the mix; lower its gain_db to balance."""
+
     type: Literal["distortion"] = "distortion"
     drive_db: float = Field(12.0, ge=0, le=60, description="Gain into a soft clipper.")
 
@@ -170,6 +191,9 @@ class Compressor(_Model):
 
 
 class Delay(_Model):
+    """Feedback echo. wet is a mix ratio. On a layer the echoes are cut at the layer's end,
+    so put delay on master and set tail_ms for the repeats to ring out."""
+
     type: Literal["delay"] = "delay"
     time_ms: float = Field(120.0, ge=1, le=2000)
     feedback: float = Field(0.3, ge=0, le=0.95)
@@ -177,6 +201,10 @@ class Delay(_Model):
 
 
 class Reverb(_Model):
+    """wet is a mix ratio: dry is scaled by 1 - wet. Audible tail is roughly room x 800 ms
+    (room 0.2 about 150 ms, 0.5 about 400 ms, 0.9 about 700 ms); set master.tail_ms to match.
+    On a layer the tail is cut at the layer's end, so put reverb on master for tails."""
+
     type: Literal["reverb"] = "reverb"
     room: float = Field(0.3, ge=0, le=1, description="Room size. 0.1 is a closet, 0.9 is a hall.")
     damping: float = Field(0.5, ge=0, le=1, description="High-frequency damping of the tail.")
@@ -184,6 +212,8 @@ class Reverb(_Model):
 
 
 class Chorus(_Model):
+    """Modulated short delay. wet is a mix ratio: dry is scaled by 1 - wet."""
+
     type: Literal["chorus"] = "chorus"
     rate_hz: float = Field(1.5, ge=0.05, le=20)
     depth_ms: float = Field(4.0, ge=0.1, le=30)
@@ -210,9 +240,14 @@ Effect = Annotated[
 
 
 class Layer(_Model):
+    """One voice. Signal chain: source -> pitch and amp envelope -> filter -> fx (in order) ->
+    gain_db, then placed at start_ms and summed with the other layers."""
+
     id: str = Field("layer", description="Short label such as transient, body, tail.")
     source: Source = Field(default_factory=OscSource)
-    pitch: Pitch = Field(default_factory=Pitch)
+    pitch: Pitch | None = Field(
+        None, description="Pitch for osc and fm sources. Omit for noise. Defaults to a steady 440 Hz."
+    )
     amp: Amp = Field(default_factory=Amp)
     filter: Filter | None = None
     fx: list[Effect] = Field(default_factory=list)
@@ -224,23 +259,42 @@ class Layer(_Model):
             s = self.source
             return (s.p_env_attack**2 + s.p_env_sustain**2 + s.p_env_decay**2) * 100000 / 44.1
         a = self.amp
-        return a.attack_ms + a.hold_ms + a.decay_ms + a.sustain_ms + a.release_ms
+        release = a.release_ms if a.sustain > 0 else 0.0
+        return a.attack_ms + a.hold_ms + a.decay_ms + a.sustain_ms + release
 
 
 class Master(_Model):
+    """After the layers are summed: master fx (in order) -> DC removal -> gain to target_lufs ->
+    true-peak limiter at true_peak_dbtp. Loudness is measured over at least 400 ms, so sounds
+    shorter than that read quieter than they are and the peak ceiling usually stops them below
+    target; the render result reports target_miss_db and a warning when that happens. Fix it with
+    a compressor, less punch, or a longer sound, not a higher target. For deliberately quiet
+    sounds set target_lufs to null and use layer gain_db."""
+
     fx: list[Effect] = Field(default_factory=list)
     target_lufs: float | None = Field(
-        -18.0, le=0, ge=-40, description="Integrated loudness target. None skips loudness normalization."
+        -18.0, le=0, ge=-40, description="Integrated loudness target. null skips loudness normalization."
     )
     true_peak_dbtp: float = Field(-1.0, le=0, ge=-12, description="Peak ceiling after normalization.")
-    tail_ms: float = Field(0.0, ge=0, description="Silence appended so reverb and delay tails can ring out.")
+    tail_ms: float = Field(
+        0.0, ge=0, description="Silence appended after the last layer so master reverb and delay tails ring out."
+    )
 
 
 class Variation(_Model):
-    """Random jitter applied per variation render. Values are maximum deviations."""
+    """Random jitter applied per variation render. Values are maximum deviations. Each variation
+    also gets a new seed, so noise layers differ even when nothing else moves."""
 
-    pitch_cents: float = Field(50.0, ge=0, le=1200)
-    timing_ms: float = Field(0.0, ge=0, le=500, description="Random delay applied to layers after the first.")
+    pitch_cents: float = Field(
+        50.0, ge=0, le=1200,
+        description="Applied to every osc and fm layer together. Noise ignores it; use filter_cents for noise sounds.",
+    )
+    filter_cents: float = Field(
+        0.0, ge=0, le=1200, description="Random shift of filter cutoffs, the way to vary noise-based sounds like footsteps."
+    )
+    timing_ms: float = Field(
+        0.0, ge=0, le=500, description="Random extra delay of 0 to timing_ms on every layer except the first, which stays put."
+    )
     gain_db: float = Field(1.0, ge=0, le=12)
 
 

@@ -51,22 +51,41 @@ def limiter(y: np.ndarray, ceiling: float, sr: int, lookahead_ms: float = 1.5, r
     return y * g
 
 
-def normalize(x: np.ndarray, sr: int, target_lufs: float | None, ceiling_dbtp: float) -> np.ndarray:
+def normalize(x: np.ndarray, sr: int, target_lufs: float | None, ceiling_dbtp: float) -> tuple[np.ndarray, dict]:
+    """Returns (audio, info). info has gain_db, limited_db, lufs, target_miss_db, warnings."""
     y = np.asarray(x, dtype=np.float64)
     y = y - np.mean(y) if len(y) else y
     ceiling = 10 ** (ceiling_dbtp / 20.0)
+    info: dict = {"gain_db": 0.0, "limited_db": 0.0, "warnings": []}
     if target_lufs is not None:
         lufs = measure_lufs(y, sr)
         if lufs is not None:
-            y = y * 10 ** ((target_lufs - lufs) / 20.0)
-            # never ask the limiter for more than 6 dB; scale the rest so it stays clean
-            peak = float(np.max(np.abs(y))) if len(y) else 0.0
-            if peak > ceiling * 2.0:
-                y = y * (ceiling * 2.0 / peak)
+            gain = 10 ** ((target_lufs - lufs) / 20.0)
+            # never ask the limiter for more than 3 dB; scale the rest so transients survive
+            cap = ceiling * 10 ** (3 / 20)
+            peak = float(np.max(np.abs(y))) * gain if len(y) else 0.0
+            if peak > cap:
+                gain *= cap / peak
+            y = y * gain
+            info["gain_db"] = round(20 * np.log10(gain), 2)
     # true-peak approximation: 4x oversampled peak
     up = np.interp(np.arange(0, len(y), 0.25), np.arange(len(y)), y) if len(y) > 1 else y
     peak = float(np.max(np.abs(up))) if len(up) else 0.0
     if peak > ceiling and peak > 0:
+        info["limited_db"] = round(20 * np.log10(peak / ceiling), 2)
         y = limiter(y, ceiling * 0.98, sr)
         y = np.clip(y, -ceiling, ceiling)
-    return y
+    final = measure_lufs(y, sr)
+    info["lufs"] = round(final, 2) if final is not None else None
+    if target_lufs is not None and final is not None:
+        miss = round(final - target_lufs, 2)
+        info["target_miss_db"] = miss
+        if miss < -1.5:
+            info["warnings"].append(
+                f"loudness landed {abs(miss)} dB below target_lufs because the true_peak_dbtp ceiling "
+                "limits short or peaky sounds; lower amp.punch, add a compressor, or lengthen the sound "
+                "rather than raising target_lufs"
+            )
+    if info["limited_db"] > 3:
+        info["warnings"].append(f"peak limiter worked hard ({info['limited_db']} dB); transients may be squashed")
+    return y, info
